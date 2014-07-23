@@ -65,7 +65,13 @@ class Dbobj(object):
         self.prettylines = prettylines      
     def noticeReference(self, ref):
         """Notice my reference during construction"""
-        self.references[ref.hsh] = ref  
+        # The very same object can be referenced more than
+        # once if that object represents two different real files or directories
+        # that happen to hash the same.
+        if ref.hsh in self.references.keys():
+            self.references[ref.hsh].append(ref)
+        else:
+            self.references[ref.hsh] = [ref]
     def acceptReferenced(self, dbobj):
         """Accept that I reference dbobj since the DAG told me so"""
         self.objsIReference.append(dbobj)
@@ -191,9 +197,14 @@ class Dag(object):
                 if referenced.objhsh in referrer.references.keys():
                     referrer.acceptReferenced(referenced)
                     referenced.acceptReferrer(referrer)
-                    referencedbyname = referrer.references[referenced.objhsh].nameused
-                    referenced.referencedbynames.add(referencedbyname)
-                    edge = Edge(referrer, referenced, referencedbyname)
+                    edgerefs= []
+                    # There might be multiple references between these two
+                    # objects if there are two things that hash
+                    # to the same referenced blob
+                    for ref in referrer.references[referenced.objhsh]:
+                        edgerefs.append(ref)
+                        referenced.referencedbynames.add(ref.nameused)
+                    edge = Edge(referrer, referenced, edgerefs)
                     self.edges.append(edge)
                     self.edgesfrom[referrer] = edge
                     self.edgesto[referenced] = edge
@@ -222,13 +233,17 @@ class Dag(object):
 
 class Edge(object):
     """A directed edge of an acyclic graph"""
-    def __init__(self, beginning, ending, referencename):
+    def __init__(self, beginning, ending, edgerefs):
         self.beginning = beginning
         self.ending = ending
-        if not referencename:
+        if not edgerefs or len(edgerefs) == 0:
             self.referencename = 'anonymous'
         else:
-            self.referencename = referencename
+            refnames = []
+            for ref in edgerefs:
+                if ref.nameused:
+                    refnames.append(ref.nameused)
+            self.referencename = ' - '.join(refnames)
     
     def dotDescribe(self):
         """Return a DOT language representation of this edge"""

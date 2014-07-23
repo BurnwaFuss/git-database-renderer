@@ -131,7 +131,9 @@ if __name__ == '__main__':
     (opts, args) = parser.parse_args(sys.argv)
     if len(args) == 2:
         repodir = args[1]
+        analyzeObjectDatabase(repodir, opts.outfile)
+        sys.exit()
     else:
         print("just run this program with the path of a git repository as an argument")
+        sys.exit(1)
     
-    sys.exit(analyzeObjectDatabase(repodir, opts.outfile))
