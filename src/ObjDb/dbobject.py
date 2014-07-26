@@ -19,13 +19,24 @@ limitations under the License.
 
 import re
 
-def newFrom(objtype, objhsh, prettylines):
+fontsizenode = 12
+fontsizeedge = 12
+
+def listAtDictKeyAppend(dictionary, key, value):
+    """Convenience method to add an object to a list at a dictionary's key"""
+    if key in dictionary:
+        dictionary[key].append(value)
+    else:
+        newlist = [value]
+        dictionary[key] = newlist
+
+def newFrom(objtype, objhsh, prettylines, headnames):
     """Factory method to construct a concrete instance of Dbobj having type objtype"""
     
     if objtype == 'tag':
         return Tag(objtype, objhsh, prettylines)
     elif objtype == 'commit':
-        return Commit(objtype, objhsh, prettylines)
+        return Commit(objtype, objhsh, prettylines, headnames)
     elif objtype == 'tree':
         return Tree(objtype, objhsh, prettylines)
     elif objtype == 'blob':
@@ -81,18 +92,27 @@ class Dbobj(object):
     def present(self):
             print("****\n" + self.objtype + " " + self.objhsh)
     def dotDescribe(self):
-        color = " [color=grey]"
-        if self.objtype == 'commit':
-            color = " [color=red]";
-        elif self.objtype == 'tree':
-            color = " [color=green]"
-        elif self.objtype == 'tag':
-            color = " [color=blue]"
-        elif self.objtype == 'blob':
-            color = " [color=grey]"
-        return q(self.id()) + color
+        return q(self.id()) + self.dotAttr()
     def id(self):
         return self.objhsh[0:6]
+    def dotAttr(self):
+        color = "color=grey"
+        label = str(self.id())
+        headnames = None
+        if self.objtype == 'commit':
+            color = "color=red"
+            if len(self.headnames) > 0:
+                headnames = "-".join(self.headnames)
+                label = headnames + "\\n" + label;
+        elif self.objtype == 'tree':
+            color = "color=green"
+        elif self.objtype == 'tag':
+            color = "color=blue"
+        elif self.objtype == 'blob':
+            color = "color=grey"
+        attrs = color  + ";label="  + q(label) + "fontsize=" +  str(fontsizenode)
+        return "[" + attrs +  "]"
+        
            
 class Tag(Dbobj):
     """A subclass of Dbobj abstracting a tag in a Git repository"""
@@ -114,7 +134,12 @@ class Tag(Dbobj):
 class Commit(Dbobj):
     """A subclass of Dbobj abstracting a commit in a Git repository"""
 
-    def __init__(self, objtype, objhsh, prettylines):
+
+    def __init__(self, objtype, objhsh, prettylines, headnames):
+        self.headnames = []
+        if headnames:
+            for headname in headnames:
+                self.headnames.append(headname)
         super(Commit, self).__init__(objtype, objhsh, prettylines)
         for line in prettylines:
             part0 = part(line, 0)
@@ -243,14 +268,14 @@ class Edge(object):
             for ref in edgerefs:
                 if ref.nameused:
                     refnames.append(ref.nameused)
-            self.referencename = ' - '.join(refnames)
+            self.referencename = '-'.join(refnames)
     
     def dotDescribe(self):
         """Return a DOT language representation of this edge"""
         label = ""
         nm = self.referencename
         if nm != 'anonymous':
-            label = " [label=\"" + nm +  "\"; fontsize=9]"
+            label = " [label=\"" + nm +  "\"; fontsize=" + str(fontsizeedge) + "]"
         beginning = q(self.beginning.id())
         ending = q(self.ending.id())
         return(beginning + " -> " + ending + label + ";")

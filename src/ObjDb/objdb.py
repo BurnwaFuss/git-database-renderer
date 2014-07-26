@@ -26,11 +26,16 @@ import subprocess
 import dbobject
 from dbobject import  Dag
 from optparse import OptionParser
+from dbobject import listAtDictKeyAppend
 
 gitdir = None
 objdir = None
 tagsdir = None
+headsdir = None
+hash2heads = {} 
 hash2obj = {}
+headkey = None # either a branch name or hash for detached HEAD
+labelofhead = "H"
 
 def error(err):
     """Report an error to stdout
@@ -66,14 +71,47 @@ def objFromHash(objhash):
     asPretty = subprocess.check_output(['git', '--git-dir=' + gitdir, 'cat-file', '-p', objhash])
     objtype = objtype.split('\n')[0]
     prettylines = asPretty.split('\n')
-    return dbobject.newFrom(objtype, objhash, prettylines)
+    headnames = []
+    if objhash in hash2heads:
+        headnames = hash2heads[objhash] 
+    if objhash == headkey:
+        headnames.append(labelofhead)
+    return dbobject.newFrom(objtype, objhash, prettylines, headnames)
 
 def allCommitHashes():
     """ Return the hashes of every commit in the repository"""
     allhashesline = subprocess.check_output(['git', '--git-dir=' + gitdir, 'log', '--format=%H'])
     allhashes = allhashesline.split('\n')
     return allhashes[0:-1]
-       
+
+def gatherHeads():
+    """Add every head to a dictionary of hashes to branch names (maybe more than one)
+    """
+    for headfile in os.listdir(headsdir):
+        # headfile's name is the name of the tag
+        tagname = headfile # just for clarity
+        headfilepath = os.path.join(headsdir, headfile)
+        with open(headfilepath) as f:
+            line = f.read()
+            hashofhead = line[0:-1]
+            listAtDictKeyAppend(hash2heads, hashofhead, tagname)
+            if tagname == headkey:
+                listAtDictKeyAppend(hash2heads, hashofhead, labelofhead)
+            
+    
+def determineHeadKey():
+    global headkey
+    HEADfile = os.path.join(gitdir, "HEAD")
+    with open(HEADfile) as f:
+        line = f.read()[0:-1] # reference to a local branch head
+        # I don't yet know enough about git to know that the following is always true
+        splitline = line.split("/")
+        if len(splitline) > 1:
+            headkey =  splitline[-1]
+        else:
+            headkey = line
+    
+    
 def gatherTags():
     """Add all tag objects into the dictionary hash2obj for the tag references found in the repository""" 
     for tagfile in os.listdir(tagsdir):
@@ -99,14 +137,21 @@ def collectFromObjs():
                 newobj = objFromHash(objhash)
                 hash2obj[objhash] = newobj
  
+ 
+ 
 def analyzeObjectDatabase(repodir, graphoutputfile=None):
     """Send to stdout the objects in the database and produce a graphical representation
     """
-    global gitdir, objdir, tagsdir
+    global gitdir, objdir, tagsdir, headsdir
     gitdir = os.path.join(repodir, '.git')
     objdir = os.path.join(gitdir,'objects')
     tagsdir = os.path.join(gitdir, 'refs', 'tags')
+    headsdir = os.path.join(gitdir, 'refs', 'heads')
 
+    # Where is the HEAD - at a branch head or is it detached?
+    determineHeadKey()
+    # collect the heads into hash2head, a dictionary keyed by hash
+    gatherHeads()
     # collect all objects into the hash2obj global dictionary
     collectFromAnchors()
     collectFromObjs()
