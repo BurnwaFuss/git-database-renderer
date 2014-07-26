@@ -80,7 +80,7 @@ def objFromHash(objhash):
 
 def allCommitHashes():
     """ Return the hashes of every commit in the repository"""
-    allhashesline = subprocess.check_output(['git', '--git-dir=' + gitdir, 'log', '--format=%H'])
+    allhashesline = subprocess.check_output(['git', '--git-dir=' + gitdir, 'log', '--all', '--format=%H'])
     allhashes = allhashesline.split('\n')
     return allhashes[0:-1]
 
