@@ -17,7 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-@author:     Barry Weinstein
+@author: Barry Weinstein
 """
 
 import sys
@@ -35,7 +35,7 @@ headsdir = None
 hash2heads = {} 
 hash2obj = {}
 headkey = None # either a branch name or hash for detached HEAD
-labelofhead = "H"
+labelofhead = "HEAD"
 
 def error(err):
     """Report an error to stdout

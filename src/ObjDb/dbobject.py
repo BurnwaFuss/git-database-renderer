@@ -105,13 +105,13 @@ class Dbobj(object):
                 headnames = "-".join(self.headnames)
                 label = headnames + "\\n" + label;
         elif self.objtype == 'tree':
-            color = "color=green"
+            color = "color=darkgreen"
         elif self.objtype == 'tag':
             color = "color=blue"
         elif self.objtype == 'blob':
-            color = "color=grey"
-        attrs = color  + ";label="  + q(label) + "fontsize=" +  str(fontsizenode)
-        return "[" + attrs +  "]"
+            color = "color=orange"
+        attrs = color  + ";label="  + q(label) + ";fontsize=" +  str(fontsizenode)
+        return " [" + attrs +  "]"
         
            
 class Tag(Dbobj):
@@ -275,7 +275,7 @@ class Edge(object):
         label = ""
         nm = self.referencename
         if nm != 'anonymous':
-            label = " [label=\"" + nm +  "\"; fontsize=" + str(fontsizeedge) + "]"
+            label = " [label=\"" + nm +  "\";fontsize=" + str(fontsizeedge) + "]"
         beginning = q(self.beginning.id())
         ending = q(self.ending.id())
         return(beginning + " -> " + ending + label + ";")
