@@ -33,6 +33,7 @@ objdir = None
 tagsdir = None
 headsdir = None
 hash2heads = {} 
+allheads = []
 hash2obj = {}
 headkey = None # either a branch name or hash for detached HEAD
 labelofhead = "HEAD"
@@ -85,25 +86,44 @@ def allCommitHashes():
     return allhashes[0:-1]
 
 def gatherHeads():
+    global allheads
     """Add every head to a dictionary of hashes to branch names (maybe more than one)
     """
     for headfile in os.listdir(headsdir):
-        # headfile's name is the name of the tag
-        tagname = headfile # just for clarity
+        # headfile's name is the name of the head
+        headname = headfile # just for clarity
         headfilepath = os.path.join(headsdir, headfile)
         with open(headfilepath) as f:
-            line = f.read()
-            hashofhead = line[0:-1]
-            listAtDictKeyAppend(hash2heads, hashofhead, tagname)
-            if tagname == headkey:
+            hashofhead = f.readline()[0:-1]
+            listAtDictKeyAppend(hash2heads, hashofhead, headname)
+            allheads.append(headname)
+            if headname == headkey:
                 listAtDictKeyAppend(hash2heads, hashofhead, labelofhead)
+    # Also deal with packed refs
+    packedrefsfile = os.path.join(gitdir, 'packed-refs')
+    if os.path.exists(packedrefsfile):
+        with open(packedrefsfile) as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                refmap = line.split(" ")
+                hashinline = refmap[0]
+                refinline = refmap[1][0:-1]
+                if refinline.startswith('refs/heads') :
+                    headname = refinline.split('/')[-1]
+                    if headname in allheads:
+                        pass
+                    else:
+                        listAtDictKeyAppend(hash2heads, hashinline, headname)
+                        if headname == headkey:
+                            listAtDictKeyAppend(hash2heads, hashinline, labelofhead)
             
     
 def determineHeadKey():
     global headkey
     HEADfile = os.path.join(gitdir, "HEAD")
     with open(HEADfile) as f:
-        line = f.read()[0:-1] # reference to a local branch head
+        line = f.readline()[0:-1] # reference to a local branch head
         # I don't yet know enough about git to know that the following is always true
         splitline = line.split("/")
         if len(splitline) > 1:
@@ -117,8 +137,7 @@ def gatherTags():
     for tagfile in os.listdir(tagsdir):
         tagfilepath = os.path.join(tagsdir, tagfile)
         with open(tagfilepath) as f:
-            line = f.read()
-            hashoftag = line[0:-1]
+            hashoftag = f.readline()[0:-1]
             hash2obj[hashoftag] = objFromHash(hashoftag)
 
 def collectFromObjs():
